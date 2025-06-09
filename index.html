@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sam's Report Writer App</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f0f0f0;
+      margin: 0;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    #container {
+      display: flex;
+      gap: 20px;
+      flex: 1;
+      overflow: hidden;
+    }
+    #mainContent {
+      flex: 3;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 5px #ccc;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+    #sidePanel {
+      flex: 1;
+      background: #fff8dc;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 5px #ccc;
+      overflow-y: auto;
+      max-width: 300px;
+    }
+    .section {
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      margin-bottom: 15px;
+      background: #fafafa;
+      overflow: hidden;
+    }
+    .section-header {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #ddd;
+      padding: 10px;
+      user-select: none;
+    }
+    .section-header:hover {
+      background: #ccc;
+    }
+    .section-content {
+      padding: 10px;
+      display: none;
+    }
+    .section.open .section-content {
+      display: block;
+    }
+    textarea,
+    input,
+    select {
+      width: 100%;
+      margin-top: 5px;
+      margin-bottom: 10px;
+      box-sizing: border-box;
+      font-size: 14px;
+    }
+    button {
+      padding: 8px 15px;
+      margin-right: 10px;
+      margin-top: 5px;
+      cursor: pointer;
+    }
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+    .icon {
+      font-weight: bold;
+      margin-left: 10px;
+      user-select: none;
+    }
+    .popup {
+      display: none;
+      position: fixed;
+      top: 10%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 60%;
+      max-height: 70%;
+      overflow-y: auto;
+      background: white;
+      border: 1px solid #ccc;
+      box-shadow: 0 0 10px #999;
+      padding: 20px;
+      z-index: 10000;
+      border-radius: 8px;
+    }
+    .popup.open {
+      display: block;
+    }
+    .popup h3 {
+      margin-top: 0;
+    }
+    #reportPreview {
+      width: 100%;
+      height: 250px;
+      font-family: monospace;
+      white-space: pre-wrap;
+      resize: vertical;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      padding: 10px;
+    }
+    ul {
+      padding-left: 20px;
+    }
+    .tag-group {
+      margin-bottom: 20px;
+    }
+    .tag-group h4 {
+      margin-bottom: 5px;
+    }
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 10px;
+    }
+    .input-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .input-row > * {
+      flex: 1;
+      min-width: 100px;
+    }
+    #newDbName {
+      width: auto;
+      flex-grow: 1;
+    }
+    #structureSelect {
+      width: 100%;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Sam's Report Writer App</h1>
+  <div id="container">
+    <div id="mainContent">
+      <!-- Section 1: Create or Load Database -->
+      <div class="section open" id="section1">
+        <div class="section-header" onclick="toggleSection('section1')">
+          <span>1. Create New Database or Load Existing</span>
+          <span class="icon">&#9660;</span>
+        </div>
+        <div class="section-content">
+          <div class="input-row">
+            <label for="newDbName">New Database Name:</label>
+            <input type="text" id="newDbName" placeholder="Enter database name" />
+            <button onclick="createNewDatabase()">Create Database</button>
+          </div>
+          <hr />
+          <label for="loadFile">Load CSV Database Files (comments, students, structure):</label>
+          <input type="file" id="loadFile" multiple accept=".csv" />
+          <button onclick="loadDatabase()">Load Database</button>
+        </div>
+      </div>
+
+      <!-- Section 2: Manage Comments Database -->
+      <div class="section" id="section2">
+        <div class="section-header" onclick="toggleSection('section2')">
+          <span>2. Manage Comments</span>
+          <span class="icon">&#9654;</span>
+        </div>
+        <div class="section-content">
+          <label>Add / Update Comment:</label>
+          <input type="text" id="commentCategory" placeholder="Category" />
+          <input type="text" id="commentLevel" placeholder="Level" />
+          <textarea id="commentText" rows="3" placeholder="Comment text"></textarea>
+          <button onclick="addOrUpdateComment()">Add / Update Comment</button>
+          <button onclick="openPopup('comments')">Select / Delete Comments</button>
+        </div>
+      </div>
+
+      <!-- Section 3: Manage Students Database -->
+      <div class="section" id="section3">
+        <div class="section-header" onclick="toggleSection('section3')">
+          <span>3. Manage Students</span>
+          <span class="icon">&#9654;</span>
+        </div>
+        <div class="section-content">
+          <label>Add / Update Student:</label>
+          <input type="text" id="studentName" placeholder="Student Name" />
+          <input type="text" id="studentClass" placeholder="Class" />
+          <button onclick="addOrUpdateStudent()">Add / Update Student</button>
+          <button onclick="openPopup('students')">Select / Delete Students</button>
+        </div>
+      </div>
+
+      <!-- Section 4: Manage Report Structures -->
+      <div class="section" id="section4">
+        <div class="section-header" onclick="toggleSection('section4')">
+          <span>4. Manage Report Structures</span>
+          <span class="icon">&#9654;</span>
+        </div>
+        <div class="section-content">
+          <label>Available Structures:</label>
+          <select id="structureSelect" onchange="loadSelectedStructure()">
+            <option value="">-- Select a structure --</option>
+          </select>
+          <label>Create / Update Structure:</label>
+          <textarea id="reportStructure" rows="5" placeholder="Define report structure with tags {{Category_Level}} etc."></textarea>
+          <button onclick="addOrUpdateStructure()">Add / Update Structure</button>
+          <button onclick="openPopup('structures')">Select / Delete Structures</button>
+        </div>
+      </div>
+
+      <!-- Section 5: Live Report Editor -->
+      <div class="section open" id="section5">
+        <div class="section-header" onclick="toggleSection('section5')">
+          <span>5. Live Report Editor</span>
+          <span class="icon">&#9660;</span>
+        </div>
+        <div class="section-content">
+          <label>Selected Student:</label>
+          <select id="selectedStudent" onchange="updateReportPreview()">
+            <option value="">-- Select Student --</option>
+          </select>
+          <textarea
+            id="reportPreview"
+            rows="15"
+            placeholder="Report output will appear here..."
+            oninput="manualEdit = true"
+          ></textarea>
+          <div>
+            <button onclick="clearEditor()">Clear Editor</button>
+            <button onclick="resetManualEdit()">Reset Edit Lock</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 6: Export -->
+      <div class="section" id="section6">
+        <div class="section-header" onclick="toggleSection('section6')">
+          <span>6. Export Final Report</span>
+          <span class="icon">&#9654;</span>
+        </div>
+        <div class="section-content">
+          <button onclick="downloadFinalReport('final_report.txt')">Download as .txt</button>
+          <button onclick="copyReportToClipboard()">Copy to Clipboard</button>
+          <button onclick="downloadPDF()">Download as PDF</button>
+          <button onclick="downloadDOCX()">Download as DOCX</button>
+          <button onclick="exportAllReports()">Export All Reports (Bulk)</button>
+        </div>
+      </div>
+
+      <!-- Section 7: Save DB Changes -->
+      <div class="section" id="section7">
+        <div class="section-header" onclick="toggleSection('section7')">
+          <span>7. Save Database Changes</span>
+          <span class="icon">&#9654;</span>
+        </div>
+        <div class="section-content">
+          <button onclick="saveAllDatabases()">Save All Databases as CSV</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Side Panel: Available Tags -->
+    <div id="sidePanel">
+      <h3>Available Tags (Use in report structure)</h3>
+      <div class="tag-group">
+        <h4>Comments Tags</h4>
+        <ul id="tagListComments"></ul>
+      </div>
+      <div class="tag-group">
+        <h4>Student Tags</h4>
+        <ul id="tagListStudents"></ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Popup window -->
+  <div class="popup" id="popupWindow">
+    <h3 id="popupTitle">Select Entry</h3>
+    <div id="popupContent"></div>
+    <button onclick="closePopup()">Close</button>
+  </div>
+
+  <!-- External libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/docx/7.7.0/docx.umd.min.js"></script>
+
+  <script>
+    // --- Data stores ---
+    // In-memory CSV "tables" as arrays of objects
+    let commentsDB = []; // {Category, Level, Comment}
+    let studentsDB = []; // {Name, Class}
+    let structuresDB = []; // {Structure}
+
+    // State vars
+    let manualEdit = false;
+    let currentStructureText = '';
+
+    // UTILITIES
+
+    // CSV parse - simple split by lines and commas (no quotes)
+    function parseCSV(csvText) {
+      const lines = csvText.trim().split('\n');
+      const headers = lines[0].split(',');
+      const data = [];
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        const values = lines[i].split(',');
+        const obj = {};
+        headers.forEach((h, idx) => (obj[h.trim()] = values[idx]?.trim() || ''));
+        data.push(obj);
+      }
+      return data;
+    }
+
+    // CSV stringify
+    function toCSV(dataArray, headers) {
+      let csv = headers.join(',') + '\n';
+      dataArray.forEach((row) => {
+        const line = headers.map((h) => (row[h] || '').replace(/,/g, ';')).join(',');
+        csv += line + '\n';
+      });
+      return csv;
+    }
+
+    // --- UI Toggles ---
+    function toggleSection(id) {
+      const section = document.getElementById(id);
+      const icon = section.querySelector('.icon');
+      const isOpen = section.classList.toggle('open');
+      icon.innerHTML = isOpen ? '&#9660;' : '&#9654;';
+    }
+
+    // --- Database Management ---
+
+    // Create new empty CSV files and reset in-memory DBs
+    function createNewDatabase() {
+      const dbNameInput = document.getElementById('newDbName');
+      const dbName = dbNameInput.value.trim();
+      if (!dbName) {
+        alert('Please enter a database name.');
+        return;
+      }
+      commentsDB = [];
+      studentsDB = [];
+      structuresDB = [];
+      currentStructureText = '';
+
+      // Add a default structure for usability
+      structuresDB.push({
+        Structure: 'Dear {{Name}},\n\nHere is your report:\n\n{{Comments}}\n\nRegards,\nYour Teacher',
+      });
+
+      alert(
+        `New database "${dbName}" created in memory. Use 'Save All Databases' to export CSV files.`
+      );
+
+      // Clear UI inputs
+      dbNameInput.value = '';
+      clearCommentsInputs();
+      clearStudentsInputs();
+      clearStructureInputs();
+      populateAllUI();
+      manualEdit = false;
+    }
+
+    // Load CSV files from user selection (multiple)
+    function loadDatabase() {
+      const input = document.getElementById('loadFile');
+      if (!input.files.length) {
+        alert('Please select CSV files to load.');
+        return;
+      }
+
+      // Reset current DBs
+      commentsDB = [];
+      studentsDB = [];
+      structuresDB = [];
+
+      const files = Array.from(input.files);
+      let filesProcessed = 0;
+
+      files.forEach((file) => {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          const text = e.target.result;
+          if (file.name.includes('comments')) {
+            commentsDB = parseCSV(text);
+          } else if (file.name.includes('students')) {
+            studentsDB = parseCSV(text);
+          } else if (file.name.includes('structure')) {
+            structuresDB = parseCSV(text);
+          }
+          filesProcessed++;
+          if (filesProcessed === files.length) {
+            alert('Database loaded successfully!');
+            populateAllUI();
+            manualEdit = false;
+          }
+        };
+        reader.readAsText(file);
+      });
+    }
+
+    // Save DBs to CSV files for download
+    function saveAllDatabases() {
+      if (
+        !commentsDB.length &&
+        !studentsDB.length &&
+        !structuresDB.length
+      ) {
+        alert('No data to save!');
+        return;
+      }
+      downloadCSV(
+        'comments.csv',
+        toCSV(commentsDB, ['Category', 'Level', 'Comment'])
+      );
+      downloadCSV(
+        'students.csv',
+        toCSV(studentsDB, ['Name', 'Class'])
+      );
+      downloadCSV(
+        'structure.csv',
+        toCSV(structuresDB, ['Structure'])
+      );
+      alert('All databases saved as CSV files.');
+    }
+
+    // Download CSV helper
+    function downloadCSV(filename, content) {
+      const blob = new Blob([content], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    // --- Comment Management ---
+
+    function addOrUpdateComment() {
+      const cat = document.getElementById('commentCategory').value.trim();
+      const lvl = document.getElementById('commentLevel').value.trim();
+      const text = document.getElementById('commentText').value.trim();
+      if (!cat || !lvl || !text) {
+        alert('Please fill all comment fields.');
+        return;
+      }
+
+      // Check if exists (category + level)
+      const index = commentsDB.findIndex(
+        (c) => c.Category === cat && c.Level === lvl
+      );
+      if (index >= 0) {
+        commentsDB[index].Comment = text;
+      } else {
+        commentsDB.push({ Category: cat, Level: lvl, Comment: text });
+      }
+      alert('Comment added/updated.');
+      clearCommentsInputs();
+      updateTagsListComments();
+      manualEdit = false;
+      updateReportPreview();
+    }
+
+    function clearCommentsInputs() {
+      document.getElementById('commentCategory').value = '';
+      document.getElementById('commentLevel').value = '';
+      document.getElementById('commentText').value = '';
+    }
+
+    // --- Student Management ---
+
+    function addOrUpdateStudent() {
+      const name = document.getElementById('studentName').value.trim();
+      const cls = document.getElementById('studentClass').value.trim();
+      if (!name || !cls) {
+        alert('Please fill all student fields.');
+        return;
+      }
+      const index = studentsDB.findIndex((s) => s.Name === name);
+      if (index >= 0) {
+        studentsDB[index].Class = cls;
+      } else {
+        studentsDB.push({ Name: name, Class: cls });
+      }
+      alert('Student added/updated.');
+      clearStudentsInputs();
+      populateStudentDropdown();
+      updateTagsListStudents();
+      manualEdit = false;
+      updateReportPreview();
+    }
+
+    function clearStudentsInputs() {
+      document.getElementById('studentName').value = '';
+      document.getElementById('studentClass').value = '';
+    }
+
+    // --- Structure Management ---
+
+    function addOrUpdateStructure() {
+      const text = document.getElementById('reportStructure').value.trim();
+      if (!text) {
+        alert('Please enter structure text.');
+        return;
+      }
+      const index = structuresDB.findIndex((s) => s.Structure === text);
+      if (index >= 0) {
+        alert('This structure already exists.');
+        return;
+      }
+      structuresDB.push({ Structure: text });
+      alert('Structure added.');
+      populateStructureDropdown();
+      manualEdit = false;
+      currentStructureText = text;
+      updateReportPreview();
+    }
+
+    function clearStructureInputs() {
+      document.getElementById('reportStructure').value = '';
+    }
+
+    function loadSelectedStructure() {
+      const select = document.getElementById('structureSelect');
+      const val = select.value;
+      if (!val) {
+        document.getElementById('reportStructure').value = '';
+        currentStructureText = '';
+        updateReportPreview();
+        return;
+      }
+      // Find structure by exact match
+      const structureObj = structuresDB.find((s) => s.Structure === val);
+      if (structureObj) {
+        document.getElementById('reportStructure').value = structureObj.Structure;
+        currentStructureText = structureObj.Structure;
+        manualEdit = false;
+        updateReportPreview();
+      }
+    }
+
+    // --- Populate UI Lists / Dropdowns ---
+
+    function populateStudentDropdown() {
+      const select = document.getElementById('selectedStudent');
+      select.innerHTML = '<option value="">-- Select Student --</option>';
+      studentsDB.forEach((student) => {
+        const option = document.createElement('option');
+        option.value = student.Name;
+        option.textContent = `${student.Name} (${student.Class})`;
+        select.appendChild(option);
+      });
+    }
+
+    function populateStructureDropdown() {
+      const select = document.getElementById('structureSelect');
+      select.innerHTML = '<option value="">-- Select a structure --</option>';
+      structuresDB.forEach((structure) => {
+        const option = document.createElement('option');
+        option.value = structure.Structure;
+        // Shorten display for long structures
+        const disp = structure.Structure.length > 30
+          ? structure.Structure.substring(0, 30) + '...'
+          : structure.Structure;
+        option.textContent = disp.replace(/\n/g, ' ');
+        select.appendChild(option);
+      });
+    }
+
+    function updateTagsListComments() {
+      const ul = document.getElementById('tagListComments');
+      ul.innerHTML = '';
+      // Tags format: {{Category_Level}}
+      commentsDB.forEach(({ Category, Level }) => {
+        const li = document.createElement('li');
+        li.textContent = `{{${Category}_${Level}}}`;
+        ul.appendChild(li);
+      });
+    }
+
+    function updateTagsListStudents() {
+      const ul = document.getElementById('tagListStudents');
+      ul.innerHTML = '';
+      // Common tags: {{Name}}, {{Class}}
+      ['Name', 'Class'].forEach((tag) => {
+        const li = document.createElement('li');
+        li.textContent = `{{${tag}}}`;
+        ul.appendChild(li);
+      });
+    }
+
+    function populateAllUI() {
+      populateStudentDropdown();
+      populateStructureDropdown();
+      updateTagsListComments();
+      updateTagsListStudents();
+      updateReportPreview();
+    }
+
+    // --- Popup Window for Selecting/Deleting ---
+
+    function openPopup(type) {
+      const popup = document.getElementById('popupWindow');
+      const content = document.getElementById('popupContent');
+      const title = document.getElementById('popupTitle');
+      content.innerHTML = '';
+
+      if (type === 'comments') {
+        title.textContent = 'Select/Delete Comments';
+        if (!commentsDB.length) {
+          content.textContent = 'No comments available.';
+        } else {
+          commentsDB.forEach(({ Category, Level, Comment }, idx) => {
+            const div = document.createElement('div');
+            div.style.marginBottom = '8px';
+
+            const text = document.createElement('span');
+            text.textContent = `[${Category} - ${Level}]: ${Comment}`;
+            div.appendChild(text);
+
+            const btn = document.createElement('button');
+            btn.textContent = 'Delete';
+            btn.style.marginLeft = '10px';
+            btn.onclick = () => {
+              if (confirm('Delete this comment?')) {
+                commentsDB.splice(idx, 1);
+                openPopup('comments'); // Refresh popup
+                populateAllUI();
+              }
+            };
+            div.appendChild(btn);
+
+            content.appendChild(div);
+          });
+        }
+      } else if (type === 'students') {
+        title.textContent = 'Select/Delete Students';
+        if (!studentsDB.length) {
+          content.textContent = 'No students available.';
+        } else {
+          studentsDB.forEach(({ Name, Class }, idx) => {
+            const div = document.createElement('div');
+            div.style.marginBottom = '8px';
+
+            const text = document.createElement('span');
+            text.textContent = `${Name} (${Class})`;
+            div.appendChild(text);
+
+            const btn = document.createElement('button');
+            btn.textContent = 'Delete';
+            btn.style.marginLeft = '10px';
+            btn.onclick = () => {
+              if (confirm('Delete this student?')) {
+                studentsDB.splice(idx, 1);
+                openPopup('students');
+                populateAllUI();
+              }
+            };
+            div.appendChild(btn);
+
+            content.appendChild(div);
+          });
+        }
+      } else if (type === 'structures') {
+        title.textContent = 'Select/Delete Structures';
+        if (!structuresDB.length) {
+          content.textContent = 'No structures available.';
+        } else {
+          structuresDB.forEach(({ Structure }, idx) => {
+            const div = document.createElement('div');
+            div.style.marginBottom = '8px';
+
+            const text = document.createElement('pre');
+            text.textContent = Structure.length > 100 ? Structure.substring(0, 100) + '...' : Structure;
+            text.style.whiteSpace = 'pre-wrap';
+            text.style.display = 'inline-block';
+            text.style.maxWidth = '80%';
+            div.appendChild(text);
+
+            const btn = document.createElement('button');
+            btn.textContent = 'Delete';
+            btn.style.marginLeft = '10px';
+            btn.onclick = () => {
+              if (confirm('Delete this structure?')) {
+                structuresDB.splice(idx, 1);
+                openPopup('structures');
+                populateAllUI();
+              }
+            };
+            div.appendChild(btn);
+
+            content.appendChild(div);
+          });
+        }
+      }
+
+      popup.classList.add('open');
+    }
+
+    function closePopup() {
+      const popup = document.getElementById('popupWindow');
+      popup.classList.remove('open');
+    }
+
+    // --- Report Preview Logic ---
+
+    // Helper: replace tags with comment/student data
+    function processReport(text, studentName) {
+      if (!text) return '';
+
+      // Replace student tags first
+      const student = studentsDB.find((s) => s.Name === studentName);
+      if (!student && studentName) {
+        return 'Selected student not found in database.';
+      }
+
+      let result = text;
+
+      // Replace student tags {{Name}}, {{Class}}
+      if (student) {
+        result = result.replace(/{{Name}}/g, student.Name);
+        result = result.replace(/{{Class}}/g, student.Class);
+      }
+
+      // Replace comment tags {{Category_Level}} with comment text
+      // Regex: {{([^{}_]+)_([^{}_]+)}}
+      result = result.replace(/{{([^{}_]+)_([^{}_]+)}}/g, (match, cat, lvl) => {
+        const found = commentsDB.find(
+          (c) => c.Category === cat && c.Level === lvl
+        );
+        return found ? found.Comment : `[Missing comment: ${cat}_${lvl}]`;
+      });
+
+      // Replace any other tags with empty string
+      result = result.replace(/{{[^}]+}}/g, '');
+
+      return result;
+    }
+
+    function updateReportPreview() {
+      const studentSelect = document.getElementById('selectedStudent');
+      const studentName = studentSelect.value;
+      const editor = document.getElementById('reportPreview');
+      const structureTextarea = document.getElementById('reportStructure');
+
+      // If user has manually edited, don't override
+      if (manualEdit) return;
+
+      // Use structure text or selected structure's text
+      let structureText = structureTextarea.value.trim();
+
+      // If no structureText and DB has default structures, use first
+      if (!structureText && structuresDB.length) {
+        structureText = structuresDB[0].Structure;
+        currentStructureText = structureText;
+        structureTextarea.value = structureText;
+      }
+
+      if (!structureText) {
+        editor.value = '';
+        return;
+      }
+
+      // Generate final report text with tag replacements
+      const finalText = processReport(structureText, studentName);
+      editor.value = finalText;
+      manualEdit = false;
+    }
+
+    // Called when user manually edits the report textarea
+    // We already mark manualEdit=true on textarea oninput attribute
+
+    function resetManualEdit() {
+      manualEdit = false;
+      updateReportPreview();
+    }
+
+    function clearEditor() {
+      document.getElementById('reportPreview').value = '';
+      manualEdit = false;
+    }
+
+    // --- Export Functions ---
+
+    // Download final report text
+    function downloadFinalReport(filename) {
+      const text = document.getElementById('reportPreview').value;
+      if (!text.trim()) {
+        alert('Report is empty. Cannot export.');
+        return;
+      }
+      const blob = new Blob([text], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    // Copy report to clipboard
+    function copyReportToClipboard() {
+      const text = document.getElementById('reportPreview').value;
+      if (!text.trim()) {
+        alert('Report is empty. Cannot copy.');
+        return;
+      }
+      navigator.clipboard.writeText(text).then(
+        () => alert('Report copied to clipboard!'),
+        () => alert('Failed to copy report.')
+      );
+    }
+
+    // Download PDF using jsPDF
+    function downloadPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      const text = document.getElementById('reportPreview').value;
+      if (!text.trim()) {
+        alert('Report is empty. Cannot export PDF.');
+        return;
+      }
+
+      // Split text into lines for PDF
+      const lines = doc.splitTextToSize(text, 180);
+      doc.text(lines, 10, 10);
+      doc.save('report.pdf');
+    }
+
+    // Download DOCX using docx.js
+    async function downloadDOCX() {
+      const { Document, Packer, Paragraph, TextRun } = window.docx;
+
+      const text = document.getElementById('reportPreview').value;
+      if (!text.trim()) {
+        alert('Report is empty. Cannot export DOCX.');
+        return;
+      }
+
+      const paragraphs = text.split('\n').map(
+        (line) =>
+          new Paragraph({
+            children: [new TextRun(line)],
+          })
+      );
+
+      const doc = new Document({
+        sections: [
+          {
+            properties: {},
+            children: paragraphs,
+          },
+        ],
+      });
+
+      const blob = await Packer.toBlob(doc);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'report.docx';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    // Export all reports (bulk) for all students based on current structure
+    function exportAllReports() {
+      if (!structuresDB.length) {
+        alert('No report structures available.');
+        return;
+      }
+      if (!studentsDB.length) {
+        alert('No students available.');
+        return;
+      }
+
+      const structureText = document.getElementById('reportStructure').value.trim();
+      if (!structureText) {
+        alert('Please select or enter a report structure.');
+        return;
+      }
+
+      studentsDB.forEach((student) => {
+        const reportText = processReport(structureText, student.Name);
+        const filenameSafe = student.Name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        downloadReportText(reportText, `${filenameSafe}_report.txt`);
+      });
+
+      alert('All reports exported as individual text files.');
+    }
+
+    function downloadReportText(text, filename) {
+      const blob = new Blob([text], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    // --- Initialization ---
+    function init() {
+      // Expand default open sections icons
+      ['section1', 'section5'].forEach((id) => {
+        const sec = document.getElementById(id);
+        sec.classList.add('open');
+        sec.querySelector('.icon').innerHTML = '&#9660;';
+      });
+
+      populateAllUI();
+
+      // Event: when report structure textarea changes, update preview and currentStructureText
+      document.getElementById('reportStructure').addEventListener('input', (e) => {
+        currentStructureText = e.target.value;
+        manualEdit = false;
+        updateReportPreview();
+      });
+    }
+
+    window.onload = init;
+  </script>
+</body>
+</html>
