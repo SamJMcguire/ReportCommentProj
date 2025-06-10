@@ -1,0 +1,116 @@
+<script>
+  // Global variables
+  let commentBank = [];
+  let editingCommentIndex = -1;
+
+  function openCommentBankEditor() {
+    // Create popup content container if not exists
+    let popup = document.getElementById('commentBankPopup');
+    if (!popup) {
+      popup = document.createElement('div');
+      popup.id = 'commentBankPopup';
+      popup.className = 'popup';
+      popup.style.width = '600px';
+      popup.style.left = '20%';
+      popup.style.top = '10%';
+      popup.style.display = 'block';
+      popup.style.background = '#fff';
+      popup.style.border = '1px solid #ccc';
+      popup.style.padding = '15px';
+      popup.style.zIndex = '1001';
+      popup.innerHTML = `
+        <h3>Comment Bank Editor</h3>
+        <label>Category:<br><input type="text" id="commentCategory" style="width:100%"></label><br>
+        <label>Subcategory:<br><input type="text" id="commentSubcategory" style="width:100%"></label><br>
+        <label>Comment:<br><textarea id="commentText" rows="4" style="width:100%"></textarea></label><br>
+        <div style="margin-top:10px;">
+          <button onclick="addOrUpdateComment()">Save Comment</button>
+          <button onclick="clearCommentFields()">Clear</button>
+          <button onclick="closeCommentBankEditor()">Close</button>
+          <button onclick="deleteComment()" style="color:red;">Delete Comment</button>
+        </div>
+        <hr>
+        <div style="max-height:250px; overflow-y:auto;">
+          <table border="1" style="width:100%; border-collapse: collapse;">
+            <thead><tr><th>#</th><th>Category</th><th>Subcategory</th><th>Comment</th></tr></thead>
+            <tbody id="commentListBody"></tbody>
+          </table>
+        </div>
+      `;
+      document.body.appendChild(popup);
+    } else {
+      popup.style.display = 'block';
+    }
+
+    loadCommentList();
+    clearCommentFields();
+  }
+
+  function closeCommentBankEditor() {
+    const popup = document.getElementById('commentBankPopup');
+    if (popup) popup.style.display = 'none';
+    editingCommentIndex = -1;
+  }
+
+  function clearCommentFields() {
+    document.getElementById('commentCategory').value = '';
+    document.getElementById('commentSubcategory').value = '';
+    document.getElementById('commentText').value = '';
+    editingCommentIndex = -1;
+  }
+
+  function loadCommentList() {
+    const tbody = document.getElementById('commentListBody');
+    tbody.innerHTML = '';
+    commentBank.forEach((c, i) => {
+      const tr = document.createElement('tr');
+      tr.style.cursor = 'pointer';
+      tr.onclick = () => {
+        editingCommentIndex = i;
+        document.getElementById('commentCategory').value = c.category;
+        document.getElementById('commentSubcategory').value = c.subcategory;
+        document.getElementById('commentText').value = c.comment;
+      };
+      tr.innerHTML = `<td>${i+1}</td><td>${escapeHtml(c.category)}</td><td>${escapeHtml(c.subcategory)}</td><td>${escapeHtml(c.comment)}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function addOrUpdateComment() {
+    const cat = document.getElementById('commentCategory').value.trim();
+    const subcat = document.getElementById('commentSubcategory').value.trim();
+    const text = document.getElementById('commentText').value.trim();
+    if (!cat || !subcat || !text) {
+      alert('Please fill in all fields');
+      return;
+    }
+    if (editingCommentIndex === -1) {
+      // Add new
+      commentBank.push({ category: cat, subcategory: subcat, comment: text });
+    } else {
+      // Update existing
+      commentBank[editingCommentIndex] = { category: cat, subcategory: subcat, comment: text };
+    }
+    loadCommentList();
+    clearCommentFields();
+  }
+
+  function deleteComment() {
+    if (editingCommentIndex === -1) {
+      alert('No comment selected to delete');
+      return;
+    }
+    if (confirm('Are you sure you want to delete this comment?')) {
+      commentBank.splice(editingCommentIndex, 1);
+      loadCommentList();
+      clearCommentFields();
+    }
+  }
+
+  // Utility to escape html in display
+  function escapeHtml(text) {
+    return text.replace(/[&<>"']/g, function(m) {
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]);
+    });
+  }
+</script>
